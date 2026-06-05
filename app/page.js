@@ -120,21 +120,18 @@ export default function Home() {
 
       <div className="page">
         <header className="hd">
-          <div className="hd-eye">תשואה מתואמת מטבע</div>
-          <div className="hd-title">S&P 500 <span>בשקלים</span></div>
+          <div className="hd-title">S&P 500</div>
           <div className="hd-ts">{ts ? `עודכן ${ts}` : 'טוען...'}</div>
         </header>
 
-        <Panel period="MTD — מתחילת החודש" data={data?.mtd} loading={loading} />
-        <Panel period="YTD — מתחילת השנה"  data={data?.ytd} loading={loading} />
+        <Panel period="MTD" data={data?.mtd} loading={loading} />
+        <Panel period="YTD"  data={data?.ytd} loading={loading} />
 
         {error && <div className="err">שגיאה: {error}</div>}
 
         <button className="btn" onClick={load} disabled={loading}>
           <span className={loading ? 'spinning' : ''}>↻</span> רענן נתונים
         </button>
-
-        <div className="note">Twelve Data · מתרענן כל 10 דקות</div>
       </div>
     </>
   );
