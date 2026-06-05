@@ -1,4 +1,4 @@
-const AV_KEY = 'TKWBBE4ATLPTE2T0';
+const TD_KEY = '3b8e7b32ce2842d2ac0359ce6b953ead';
 
 export async function GET() {
   try {
@@ -6,49 +6,41 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear  = new Date(now.getFullYear(), 0, 1);
 
-    async function fetchSP() {
-      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=SPY&outputsize=full&apikey=${AV_KEY}`;
+    function toDateStr(d) {
+      return d.toISOString().split('T')[0];
+    }
+
+    async function fetchSeries(symbol) {
+      const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=365&apikey=${TD_KEY}`;
       const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
-      if (data['Note'] || data['Information']) throw new Error('rate_limit');
-      const series = data['Time Series (Daily)'];
-      if (!series) throw new Error('אין נתוני S&P: ' + JSON.stringify(Object.keys(data)));
-      return series;
+      if (data.status === 'error') throw new Error(data.message);
+      return data.values; // array of {datetime, close, ...}
     }
 
-    async function fetchFX() {
-      const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=USD&to_symbol=ILS&outputsize=full&apikey=${AV_KEY}`;
-      const res = await fetch(url, { cache: 'no-store' });
-      const data = await res.json();
-      if (data['Note'] || data['Information']) throw new Error('rate_limit');
-      const series = data['Time Series FX (Daily)'];
-      if (!series) throw new Error('אין נתוני FX: ' + JSON.stringify(Object.keys(data)));
-      return series;
+    function getPrice(values, targetDate) {
+      const target = toDateStr(targetDate);
+      // values are newest first
+      const reversed = [...values].reverse(); // oldest first
+      const found = reversed.find(v => v.datetime >= target);
+      return parseFloat(found ? found.close : values[values.length-1].close);
     }
 
-    function getPrice(series, targetDate) {
-      const target = targetDate.toISOString().split('T')[0];
-      const dates = Object.keys(series).sort();
-      const found = dates.find(d => d >= target);
-      const key = found || dates[dates.length - 1];
-      return parseFloat(series[key]['4. close']);
+    function getLatest(values) {
+      return parseFloat(values[0].close);
     }
 
-    function getLatest(series) {
-      const dates = Object.keys(series).sort((a,b) => b.localeCompare(a));
-      return parseFloat(series[dates[0]]['4. close']);
-    }
+    const [spValues, fxValues] = await Promise.all([
+      fetchSeries('SPY'),
+      fetchSeries('USD/ILS'),
+    ]);
 
-    const spSeries = await fetchSP();
-    await new Promise(r => setTimeout(r, 2000));
-    const fxSeries = await fetchFX();
-
-    const spLast     = getLatest(spSeries);
-    const fxLast     = getLatest(fxSeries);
-    const spMtdFirst = getPrice(spSeries, startOfMonth);
-    const spYtdFirst = getPrice(spSeries, startOfYear);
-    const fxMtdFirst = getPrice(fxSeries, startOfMonth);
-    const fxYtdFirst = getPrice(fxSeries, startOfYear);
+    const spLast     = getLatest(spValues);
+    const fxLast     = getLatest(fxValues);
+    const spMtdFirst = getPrice(spValues, startOfMonth);
+    const spYtdFirst = getPrice(spValues, startOfYear);
+    const fxMtdFirst = getPrice(fxValues, startOfMonth);
+    const fxYtdFirst = getPrice(fxValues, startOfYear);
 
     const calc = (first, last) => ({ first, last, change: (last - first) / first });
 
@@ -61,9 +53,6 @@ export async function GET() {
     return Response.json({ mtd, ytd, updatedAt: now.toISOString() });
 
   } catch (e) {
-    const msg = e.message === 'rate_limit'
-      ? 'rate limit'
-      : e.message;
-    return Response.json({ error: msg }, { status: 500 });
+    return Response.json({ error: e.message }, { status: 500 });
   }
 }
