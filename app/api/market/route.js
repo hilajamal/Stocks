@@ -15,13 +15,12 @@ export async function GET() {
       const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
       if (data.status === 'error') throw new Error(data.message);
-      return data.values; // array of {datetime, close, ...}
+      return data.values;
     }
 
     function getPrice(values, targetDate) {
       const target = toDateStr(targetDate);
-      // values are newest first
-      const reversed = [...values].reverse(); // oldest first
+      const reversed = [...values].reverse();
       const found = reversed.find(v => v.datetime >= target);
       return parseFloat(found ? found.close : values[values.length-1].close);
     }
@@ -35,10 +34,14 @@ export async function GET() {
       fetchSeries('USD/ILS'),
     ]);
 
-    const spLast     = getLatest(spValues);
+    // SPY * 10 ≈ S&P 500 level
+    const MULT = 10;
+
+    const spLast     = getLatest(spValues) * MULT;
+    const spMtdFirst = getPrice(spValues, startOfMonth) * MULT;
+    const spYtdFirst = getPrice(spValues, startOfYear) * MULT;
+
     const fxLast     = getLatest(fxValues);
-    const spMtdFirst = getPrice(spValues, startOfMonth);
-    const spYtdFirst = getPrice(spValues, startOfYear);
     const fxMtdFirst = getPrice(fxValues, startOfMonth);
     const fxYtdFirst = getPrice(fxValues, startOfYear);
 
