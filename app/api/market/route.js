@@ -31,7 +31,7 @@ export async function GET() {
     }
 
     const [spValues, fxValues] = await Promise.all([
-      fetchSeries('SPY'),
+      fetchSeries('SPX'),
       fetchSeries('USD/ILS'),
     ]);
 
