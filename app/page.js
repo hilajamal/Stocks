@@ -4,17 +4,31 @@ import { useState, useEffect, useCallback } from 'react';
 const fmt = n => (n >= 0 ? '+' : '') + (n * 100).toFixed(2) + '%';
 const cc  = n => n > 0.0005 ? 'up' : n < -0.0005 ? 'down' : 'neutral';
 
-function StatRow({ label, value, sub, big, loading }) {
+function StatRow({ label, value, sub, loading }) {
   const cls = value !== null ? cc(value) : 'neutral';
   return (
-    <div className={`sr ${big ? 'sr-big' : ''}`}>
+    <div className="sr">
       <div className="sr-left">
         <span className="sr-label">{label}</span>
         {sub && <span className="sr-sub">{sub}</span>}
       </div>
       <div className={`sr-val ${cls}`}>
         {loading
-          ? <span className="skel" style={{width: big?100:72, height: big?36:26, display:'block', borderRadius:6}} />
+          ? <span className="skel" style={{width:72, height:26, display:'block', borderRadius:6}} />
+          : value !== null ? fmt(value) : '—'}
+      </div>
+    </div>
+  );
+}
+
+function NetRow({ value, loading }) {
+  const cls = value !== null ? cc(value) : 'neutral';
+  return (
+    <div className="sr sr-net">
+      <span className="sr-label">בשקלים נטו</span>
+      <div className={`sr-val ${cls}`}>
+        {loading
+          ? <span className="skel" style={{width:72, height:26, display:'block', borderRadius:6}} />
           : value !== null ? fmt(value) : '—'}
       </div>
     </div>
@@ -28,11 +42,21 @@ function Panel({ period, data, loading }) {
   return (
     <div className="panel">
       <div className="panel-head"><span className="ptag">{period}</span></div>
-      <StatRow label="S&P 500" sub={sp ? `${Math.round(sp.first).toLocaleString()} ← ${Math.round(sp.last).toLocaleString()}` : null} value={sp?.change ?? null} loading={loading} />
+      <StatRow
+        label="S&P 500"
+        sub={sp ? `${Math.round(sp.last).toLocaleString()} ← ${Math.round(sp.first).toLocaleString()}` : null}
+        value={sp?.change ?? null}
+        loading={loading}
+      />
       <div className="div" />
-      <StatRow label="דולר / שקל" sub={fx ? `${fx.first.toFixed(3)} ← ${fx.last.toFixed(3)} ₪/$` : null} value={fx?.change ?? null} loading={loading} />
+      <StatRow
+        label="דולר / שקל"
+        sub={fx ? `${fx.last.toFixed(3)} ← ${fx.first.toFixed(3)} ₪/$` : null}
+        value={fx?.change ?? null}
+        loading={loading}
+      />
       <div className="div div-bold" />
-      <StatRow label="בשקלים נטו" value={net} loading={loading} big />
+      <NetRow value={net} loading={loading} />
     </div>
   );
 }
@@ -80,24 +104,18 @@ export default function Home() {
 
         .page { max-width:400px; margin:0 auto; padding:28px 16px 56px; display:flex; flex-direction:column; gap:10px; }
 
-        .hd { padding-bottom:4px; }
-        .hd-eye { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--sub); margin-bottom:10px; }
-        .hd-title { font-size:32px; font-weight:700; line-height:1.1; letter-spacing:-0.5px; }
-        .hd-title span { color:var(--up); }
-        .hd-ts { font-size:11px; color:var(--sub); margin-top:6px; }
+        .hd-ts { font-size:11px; color:var(--sub); margin-bottom:4px; text-align:left; }
 
         .panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
         .panel-head { padding:12px 16px; border-bottom:1px solid var(--border); }
         .ptag { font-size:11px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--tag-text); background:var(--tag-bg); padding:4px 10px; border-radius:20px; }
 
         .sr { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; gap:8px; }
-        .sr-big { padding:16px 16px; background:var(--surface2); }
+        .sr-net { background:var(--surface2); }
         .sr-left { display:flex; flex-direction:column; gap:3px; }
         .sr-label { font-size:13px; font-weight:500; color:var(--text); }
-        .sr-big .sr-label { font-size:14px; font-weight:600; }
         .sr-sub { font-size:10px; color:var(--sub); }
         .sr-val { font-size:22px; font-weight:700; letter-spacing:-0.3px; flex-shrink:0; transition:color .3s; }
-        .sr-big .sr-val { font-size:32px; letter-spacing:-0.3px; }
         .sr-val.up { color:var(--up); }
         .sr-val.down { color:var(--down); }
         .sr-val.neutral { color:var(--neutral); }
@@ -119,19 +137,19 @@ export default function Home() {
       `}</style>
 
       <div className="page">
-        <header className="hd">
-          <div className="hd-title">S&P 500</div>
-          <div className="hd-ts">{ts ? `עודכן ${ts}` : 'טוען...'}</div>
-        </header>
+        <div className="hd-ts">{ts ? `עודכן ${ts}` : 'טוען...'}</div>
 
-        <Panel period="MTD" data={data?.mtd} loading={loading} />
-        <Panel period="YTD"  data={data?.ytd} loading={loading} />
+        <Panel period="TODAY" data={data?.today} loading={loading} />
+        <Panel period="MTD"   data={data?.mtd}   loading={loading} />
+        <Panel period="YTD"   data={data?.ytd}   loading={loading} />
 
         {error && <div className="err">שגיאה: {error}</div>}
 
         <button className="btn" onClick={load} disabled={loading}>
           <span className={loading ? 'spinning' : ''}>↻</span> רענן נתונים
         </button>
+
+        <div className="note">Twelve Data · מתרענן כל 10 דקות</div>
       </div>
     </>
   );
