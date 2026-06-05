@@ -97,7 +97,7 @@ export default function Home() {
         .sr-big .sr-label { font-size:14px; font-weight:600; }
         .sr-sub { font-size:10px; color:var(--sub); }
         .sr-val { font-size:22px; font-weight:700; letter-spacing:-0.3px; flex-shrink:0; transition:color .3s; }
-        .sr-big .sr-val { font-size:32px; letter-spacing:-0.5px; }
+        .sr-big .sr-val { font-size:32px; letter-spacing:-0.3px; }
         .sr-val.up { color:var(--up); }
         .sr-val.down { color:var(--down); }
         .sr-val.neutral { color:var(--neutral); }
