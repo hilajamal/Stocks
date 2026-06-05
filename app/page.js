@@ -114,7 +114,7 @@ export default function Home() {
         .sr-net { background:var(--surface2); }
         .sr-left { display:flex; flex-direction:column; gap:3px; }
         .sr-label { font-size:13px; font-weight:500; color:var(--text); }
-        .sr-sub { font-size:10px; color:var(--sub); }
+        .sr-sub { font-size:10px; color:var(--sub); direction:ltr; text-align:right; }
         .sr-val { font-size:22px; font-weight:700; letter-spacing:-0.3px; flex-shrink:0; transition:color .3s; }
         .sr-val.up { color:var(--up); }
         .sr-val.down { color:var(--down); }
