@@ -8,28 +8,27 @@ export async function GET() {
 
     async function fetchSP() {
       const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=SPY&outputsize=full&apikey=${AV_KEY}`;
-      const res = await fetch(url, { next: { revalidate: 300 } });
+      const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
-      if (data['Note'] || data['Information']) throw new Error('Alpha Vantage rate limit — נסי שוב בעוד דקה');
+      if (data['Note'] || data['Information']) throw new Error('rate_limit');
       const series = data['Time Series (Daily)'];
-      if (!series) throw new Error('אין נתוני S&P');
+      if (!series) throw new Error('אין נתוני S&P: ' + JSON.stringify(Object.keys(data)));
       return series;
     }
 
     async function fetchFX() {
       const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=USD&to_symbol=ILS&outputsize=full&apikey=${AV_KEY}`;
-      const res = await fetch(url, { next: { revalidate: 300 } });
+      const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
-      if (data['Note'] || data['Information']) throw new Error('Alpha Vantage rate limit — נסי שוב בעוד דקה');
+      if (data['Note'] || data['Information']) throw new Error('rate_limit');
       const series = data['Time Series FX (Daily)'];
-      if (!series) throw new Error('אין נתוני USD/ILS');
+      if (!series) throw new Error('אין נתוני FX: ' + JSON.stringify(Object.keys(data)));
       return series;
     }
 
     function getPrice(series, targetDate) {
       const target = targetDate.toISOString().split('T')[0];
       const dates = Object.keys(series).sort();
-      // First trading day on or after target
       const found = dates.find(d => d >= target);
       const key = found || dates[dates.length - 1];
       return parseFloat(series[key]['4. close']);
@@ -40,7 +39,9 @@ export async function GET() {
       return parseFloat(series[dates[0]]['4. close']);
     }
 
-    const [spSeries, fxSeries] = await Promise.all([fetchSP(), fetchFX()]);
+    const spSeries = await fetchSP();
+    await new Promise(r => setTimeout(r, 2000));
+    const fxSeries = await fetchFX();
 
     const spLast     = getLatest(spSeries);
     const fxLast     = getLatest(fxSeries);
@@ -58,7 +59,11 @@ export async function GET() {
     ytd.net = (1 + ytd.sp.change) * (1 + ytd.fx.change) - 1;
 
     return Response.json({ mtd, ytd, updatedAt: now.toISOString() });
+
   } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+    const msg = e.message === 'rate_limit'
+      ? 'rate limit'
+      : e.message;
+    return Response.json({ error: msg }, { status: 500 });
   }
 }
