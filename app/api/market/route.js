@@ -15,12 +15,12 @@ export async function GET() {
       const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
       if (data.status === 'error') throw new Error(data.message);
-      return data.values;
+      return data.values; // newest first
     }
 
     function getPrice(values, targetDate) {
       const target = toDateStr(targetDate);
-      const reversed = [...values].reverse();
+      const reversed = [...values].reverse(); // oldest first
       const found = reversed.find(v => v.datetime >= target);
       return parseFloat(found ? found.close : values[values.length-1].close);
     }
@@ -29,23 +29,36 @@ export async function GET() {
       return parseFloat(values[0].close);
     }
 
+    function getYesterday(values) {
+      // values[0] = today or latest, values[1] = previous day
+      return parseFloat(values[1]?.close ?? values[0].close);
+    }
+
+    function getTodayOpen(values) {
+      return parseFloat(values[0].open);
+    }
+
     const [spValues, fxValues] = await Promise.all([
       fetchSeries('SPY'),
       fetchSeries('USD/ILS'),
     ]);
 
-    // SPY * 10 ≈ S&P 500 level
     const MULT = 10;
 
-    const spLast     = getLatest(spValues) * MULT;
-    const spMtdFirst = getPrice(spValues, startOfMonth) * MULT;
-    const spYtdFirst = getPrice(spValues, startOfYear) * MULT;
+    const spLast      = getLatest(spValues) * MULT;
+    const spMtdFirst  = getPrice(spValues, startOfMonth) * MULT;
+    const spYtdFirst  = getPrice(spValues, startOfYear) * MULT;
+    const spYday      = getYesterday(spValues) * MULT;
 
-    const fxLast     = getLatest(fxValues);
-    const fxMtdFirst = getPrice(fxValues, startOfMonth);
-    const fxYtdFirst = getPrice(fxValues, startOfYear);
+    const fxLast      = getLatest(fxValues);
+    const fxMtdFirst  = getPrice(fxValues, startOfMonth);
+    const fxYtdFirst  = getPrice(fxValues, startOfYear);
+    const fxYday      = getYesterday(fxValues);
 
     const calc = (first, last) => ({ first, last, change: (last - first) / first });
+
+    const today = { sp: calc(spYday, spLast), fx: calc(fxYday, fxLast) };
+    today.net = (1 + today.sp.change) * (1 + today.fx.change) - 1;
 
     const mtd = { sp: calc(spMtdFirst, spLast), fx: calc(fxMtdFirst, fxLast) };
     mtd.net = (1 + mtd.sp.change) * (1 + mtd.fx.change) - 1;
@@ -53,7 +66,7 @@ export async function GET() {
     const ytd = { sp: calc(spYtdFirst, spLast), fx: calc(fxYtdFirst, fxLast) };
     ytd.net = (1 + ytd.sp.change) * (1 + ytd.fx.change) - 1;
 
-    return Response.json({ mtd, ytd, updatedAt: now.toISOString() });
+    return Response.json({ today, mtd, ytd, updatedAt: now.toISOString() });
 
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
